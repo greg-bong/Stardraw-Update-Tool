@@ -1,0 +1,5 @@
+# Device ID prefixes that should be cleared
+ENC
+DEC
+SGN
+UC

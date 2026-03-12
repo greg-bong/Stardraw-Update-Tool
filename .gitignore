@@ -1,0 +1,10 @@
+.DS_Store
+.pyinstaller/
+__pycache__/
+*.pyc
+
+venv/
+build/
+
+# Keep packaged output out of source control by default.
+dist/
