@@ -1,6 +1,7 @@
 import json
 import os
 import queue
+import sys
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -11,22 +12,36 @@ from version import APP_NAME, BUILD, VERSION
 
 CONFIG_FILE = os.path.expanduser("~/.stardraw_tool_config.json")
 APPROVED_ROOT = "TechTeam Resources"
+LOGO_FILE = "Twisted_Large_Logo Positive.png"
 
-BG = "#16181d"
-FG = "#edf1f7"
-MUTED = "#9aa6b2"
-ACCENT = "#c7ff5e"
-ACCENT_DARK = "#93c83e"
-PANEL = "#20242c"
-PANEL_ALT = "#282d36"
-BORDER = "#343b46"
+BG = "#0c1117"
+FG = "#8e979e"
+MUTED = "#94a0ad"
+ACCENT = "#ff6a1a"
+ACCENT_DARK = "#d95714"
+TEAL = "#7ec6bd"
+PANEL = "#141b24"
+PANEL_ALT = "#1a2430"
+BORDER = "#2a3847"
+FIELD_BG = "#0b1219"
+LOG_BG = "#081018"
+SECONDARY = "#d6deea"
+SECONDARY_HOVER = "#bec9d7"
 ERROR = "#ff7b72"
-SUCCESS = "#7ee787"
-WARNING = "#ffd866"
+SUCCESS = "#67d5a2"
+WARNING = "#ffd166"
+
+
+def get_resource_path(filename):
+    """Resolve bundled resources correctly in both source and packaged app modes."""
+    bundle_dir = getattr(sys, "_MEIPASS", None)
+    if bundle_dir:
+        return os.path.join(bundle_dir, filename)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
 
 
 def load_config():
-    """Load saved user preferences, such as the last destination workbook path."""
+    """Load saved user preferences, such as the last destination and archive paths."""
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -59,12 +74,14 @@ class App:
         self.pending_conflicts = []
         self.pending_source = None
         self.pending_dest = None
+        self.pending_archive_dir = None
         self.conflict_window = None
 
         self.lock_var = tk.BooleanVar(value=True)
         self.status_var = tk.StringVar(value="Ready. Select the source export and destination workbook.")
         self.progress_var = tk.DoubleVar(value=0)
         self.progress_text_var = tk.StringVar(value="Idle")
+        self.logo_image = None
 
         self.build_ui()
         self.refresh_exclusion_status()
@@ -97,46 +114,91 @@ class App:
         hero = tk.Frame(outer, bg=PANEL, highlightbackground=BORDER, highlightthickness=1)
         hero.pack(fill="x", padx=18, pady=(18, 14))
 
+        hero_band = tk.Frame(hero, bg=ACCENT, height=6)
+        hero_band.pack(fill="x")
+
+        hero_top = tk.Frame(hero, bg=PANEL)
+        hero_top.pack(fill="x", padx=16, pady=(14, 6))
+
+        logo_label = self.create_logo_label(hero_top)
+        if logo_label:
+            logo_label.pack(side="left", anchor="n", padx=(0, 14))
+
+        title_block = tk.Frame(hero_top, bg=PANEL)
+        title_block.pack(side="left", fill="x", expand=True)
+
+        eyebrow = tk.Label(
+            title_block,
+            text="STARDRAW ATTRIBUTE WORKFLOW",
+            bg=PANEL,
+            fg=TEAL,
+            font=("Avenir Next", 9, "bold"),
+            anchor="w",
+        )
+        eyebrow.pack(fill="x", pady=(2, 2))
+
         title = tk.Label(
-            hero,
+            title_block,
             text=APP_NAME,
             bg=PANEL,
             fg=FG,
-            font=("Avenir Next", 18, "bold"),
+            font=("Avenir Next", 20, "bold"),
             anchor="w",
         )
-        title.pack(fill="x", padx=16, pady=(14, 2))
+        title.pack(fill="x", pady=(0, 2))
 
         subtitle = tk.Label(
-            hero,
+            title_block,
             text=f"Version {VERSION}  |  Build {BUILD}",
             bg=PANEL,
             fg=ACCENT,
             font=("Avenir Next", 10, "bold"),
             anchor="w",
         )
-        subtitle.pack(fill="x", padx=16, pady=(0, 6))
+        subtitle.pack(fill="x", pady=(0, 2))
 
         intro = tk.Label(
             hero,
             text="Updates Stardraw model attributes from the source product export and writes safely back to the shared workbook.",
             bg=PANEL,
             fg=MUTED,
-            font=("Avenir Next", 10),
+            font=("Avenir Next", 11),
             anchor="w",
             justify="left",
             wraplength=760,
         )
         intro.pack(fill="x", padx=16, pady=(0, 14))
 
+        hero_meta = tk.Frame(hero, bg=PANEL)
+        hero_meta.pack(fill="x", padx=16, pady=(0, 14))
+
+        for label_text, fill, text_color in [
+            ("Shared workbook safe", "#1f3342", "#dbe8f3"),
+            ("Conflict chooser enabled", "#17342f", SUCCESS),
+            ("Archive backup before replace", "#432a1c", WARNING),
+        ]:
+            pill = tk.Label(
+                hero_meta,
+                text=label_text,
+                bg=fill,
+                fg=text_color,
+                font=("Avenir Next", 9, "bold"),
+                padx=10,
+                pady=5,
+            )
+            pill.pack(side="left", padx=(0, 8))
+
         form = tk.Frame(outer, bg=BG)
         form.pack(fill="x", padx=18)
 
         self.source_entry = self.create_file_field(form, "Source Products Export", "Choose the latest products export workbook.")
         self.dest_entry = self.create_file_field(form, "Destination Attributes File", "Choose the shared Stardraw attributes workbook.")
+        self.archive_entry = self.create_folder_field(form, "Archive Backup Folder", "Choose where backup copies should be written before the live file is replaced.")
 
         if "destination" in self.config_data:
             self.dest_entry.insert(0, self.config_data["destination"])
+        if "archive_dir" in self.config_data:
+            self.archive_entry.insert(0, self.config_data["archive_dir"])
 
         options_panel = tk.Frame(outer, bg=PANEL_ALT, highlightbackground=BORDER, highlightthickness=1)
         options_panel.pack(fill="x", padx=18, pady=(12, 10))
@@ -176,9 +238,9 @@ class App:
             fg="black",
             activebackground=ACCENT_DARK,
             activeforeground="black",
-            font=("Avenir Next", 11, "bold"),
-            padx=18,
-            pady=7,
+            font=("Avenir Next", 12, "bold"),
+            padx=24,
+            pady=9,
             relief="flat",
             command=self.start_pipeline,
             cursor="hand2",
@@ -226,12 +288,12 @@ class App:
         style.theme_use(style.theme_use())
         style.configure(
             "Stardraw.Horizontal.TProgressbar",
-            troughcolor="#11161c",
+            troughcolor=FIELD_BG,
             background=ACCENT,
             bordercolor=PANEL_ALT,
             lightcolor=ACCENT,
             darkcolor=ACCENT,
-            thickness=16,
+            thickness=18,
         )
 
         self.progress_bar = ttk.Progressbar(
@@ -312,7 +374,7 @@ class App:
 
         self.log = tk.Text(
             log_frame,
-            bg="#12151a",
+            bg=LOG_BG,
             fg=FG,
             insertbackground=FG,
             selectbackground="#334155",
@@ -332,23 +394,52 @@ class App:
         self.log.tag_configure("warning", foreground=WARNING)
         self.log.tag_configure("info", foreground=FG)
 
+    def create_logo_label(self, parent):
+        """Load and render the company logo when the PNG resource is available."""
+        logo_path = get_resource_path(LOGO_FILE)
+        if not os.path.exists(logo_path):
+            return None
+
+        try:
+            raw_logo = tk.PhotoImage(file=logo_path)
+        except tk.TclError:
+            return None
+
+        target_height = 54
+        shrink = max(1, int(round(raw_logo.height() / target_height)))
+        self.logo_image = raw_logo.subsample(shrink, shrink)
+
+        return tk.Label(
+            parent,
+            image=self.logo_image,
+            bg=PANEL,
+            bd=0,
+            highlightthickness=0,
+        )
+
     def create_file_field(self, parent, label_text, helper_text):
         """Render a labeled file picker row and return its entry widget."""
         frame = tk.Frame(parent, bg=PANEL_ALT, highlightbackground=BORDER, highlightthickness=1)
         frame.pack(fill="x", pady=8)
 
+        accent_bar = tk.Frame(frame, bg=ACCENT, width=6)
+        accent_bar.pack(side="left", fill="y")
+
+        content = tk.Frame(frame, bg=PANEL_ALT)
+        content.pack(side="left", fill="both", expand=True)
+
         label = tk.Label(
-            frame,
+            content,
             text=label_text,
             bg=PANEL_ALT,
             fg=FG,
-            font=("Avenir Next", 13, "bold"),
+            font=("Avenir Next", 12, "bold"),
             anchor="w",
         )
         label.pack(fill="x", padx=18, pady=(14, 2))
 
         helper = tk.Label(
-            frame,
+            content,
             text=helper_text,
             bg=PANEL_ALT,
             fg=MUTED,
@@ -357,16 +448,18 @@ class App:
         )
         helper.pack(fill="x", padx=18, pady=(0, 10))
 
-        row = tk.Frame(frame, bg=PANEL_ALT)
+        row = tk.Frame(content, bg=PANEL_ALT)
         row.pack(fill="x", padx=18, pady=(0, 16))
 
         entry = tk.Entry(
             row,
-            bg="#11161c",
-            fg=FG,
-            insertbackground=FG,
+            bg=FIELD_BG,
+            fg="#d9e1e8",
+            insertbackground="#d9e1e8",
             relief="flat",
             font=("Menlo", 11),
+            disabledbackground=FIELD_BG,
+            disabledforeground=MUTED,
         )
         entry.pack(side="left", fill="x", expand=True, ipady=8)
 
@@ -390,9 +483,82 @@ class App:
         self.browse_buttons.append(btn)
         return entry
 
+    def create_folder_field(self, parent, label_text, helper_text):
+        """Render a labeled folder picker row and return its entry widget."""
+        frame = tk.Frame(parent, bg=PANEL_ALT, highlightbackground=BORDER, highlightthickness=1)
+        frame.pack(fill="x", pady=8)
+
+        accent_bar = tk.Frame(frame, bg=ACCENT, width=6)
+        accent_bar.pack(side="left", fill="y")
+
+        content = tk.Frame(frame, bg=PANEL_ALT)
+        content.pack(side="left", fill="both", expand=True)
+
+        label = tk.Label(
+            content,
+            text=label_text,
+            bg=PANEL_ALT,
+            fg=FG,
+            font=("Avenir Next", 12, "bold"),
+            anchor="w",
+        )
+        label.pack(fill="x", padx=18, pady=(14, 2))
+
+        helper = tk.Label(
+            content,
+            text=helper_text,
+            bg=PANEL_ALT,
+            fg=MUTED,
+            font=("Avenir Next", 10),
+            anchor="w",
+        )
+        helper.pack(fill="x", padx=18, pady=(0, 10))
+
+        row = tk.Frame(content, bg=PANEL_ALT)
+        row.pack(fill="x", padx=18, pady=(0, 16))
+
+        entry = tk.Entry(
+            row,
+            bg=FIELD_BG,
+            fg="#d9e1e8",
+            insertbackground="#d9e1e8",
+            relief="flat",
+            font=("Menlo", 11),
+            disabledbackground=FIELD_BG,
+            disabledforeground=MUTED,
+        )
+        entry.pack(side="left", fill="x", expand=True, ipady=8)
+
+        btn = tk.Button(
+            row,
+            text="Browse",
+            bg=ACCENT,
+            fg="black",
+            activebackground=ACCENT_DARK,
+            activeforeground="black",
+            relief="flat",
+            font=("Avenir Next", 11, "bold"),
+            padx=16,
+            pady=8,
+            command=lambda: self.browse_folder(entry),
+            cursor="hand2",
+        )
+        btn.pack(side="left", padx=(12, 0))
+
+        self.file_entries.append(entry)
+        self.browse_buttons.append(btn)
+        return entry
+
     def browse(self, entry):
         """Open a file picker and write the selected workbook path into the target entry."""
         path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
+        if path:
+            entry.delete(0, tk.END)
+            entry.insert(0, path)
+
+    def browse_folder(self, entry):
+        """Open a folder picker and write the selected directory path into the target entry."""
+        path = filedialog.askdirectory()
         if path:
             entry.delete(0, tk.END)
             entry.insert(0, path)
@@ -503,10 +669,11 @@ class App:
 
         source = self.source_entry.get().strip()
         dest = self.dest_entry.get().strip()
+        archive_dir = self.archive_entry.get().strip()
 
-        if not source or not dest:
-            self.set_status("Both files are required before you can run the update.", ERROR)
-            messagebox.showerror("Error", "Please select both files.")
+        if not source or not dest or not archive_dir:
+            self.set_status("Source, destination, and archive folder are all required.", ERROR)
+            messagebox.showerror("Error", "Please select the source file, destination file, and archive folder.")
             return
 
         if self.lock_var.get() and APPROVED_ROOT not in dest:
@@ -517,12 +684,13 @@ class App:
             )
             return
 
-        self.launch_pipeline(source, dest)
+        self.launch_pipeline(source, dest, archive_dir=archive_dir)
 
-    def launch_pipeline(self, source, dest, conflict_resolutions=None, reset_log=True):
+    def launch_pipeline(self, source, dest, conflict_resolutions=None, reset_log=True, archive_dir=None):
         """Start a background pipeline run, optionally applying chosen conflict resolutions."""
         self.pending_source = source
         self.pending_dest = dest
+        self.pending_archive_dir = archive_dir
 
         if self.conflict_window and self.conflict_window.winfo_exists():
             self.conflict_window.destroy()
@@ -543,12 +711,12 @@ class App:
 
         self.worker_thread = threading.Thread(
             target=self.run_pipeline_worker,
-            args=(source, dest, conflict_resolutions or {}),
+            args=(source, dest, conflict_resolutions or {}, archive_dir),
             daemon=True,
         )
         self.worker_thread.start()
 
-    def run_pipeline_worker(self, source, dest, conflict_resolutions):
+    def run_pipeline_worker(self, source, dest, conflict_resolutions, archive_dir):
         """Execute preflight checks and the update engine on a background thread."""
         try:
             self.log_queue.put(("progress", (8, "Checking Google Drive availability")))
@@ -561,8 +729,9 @@ class App:
                 self.log_message,
                 self.queue_progress_update,
                 conflict_resolutions,
+                archive_dir,
             )
-            save_config({"destination": dest})
+            save_config({"destination": dest, "archive_dir": archive_dir})
 
             self.log_queue.put(("success", "Update completed successfully."))
         except AttributeConflictError as exc:
@@ -768,9 +937,9 @@ class App:
         cancel_btn = tk.Button(
             footer,
             text="Close",
-            bg="#e5e7eb",
+            bg=SECONDARY,
             fg="black",
-            activebackground="#cbd5e1",
+            activebackground=SECONDARY_HOVER,
             activeforeground="black",
             relief="flat",
             font=("Avenir Next", 10, "bold"),
@@ -865,6 +1034,7 @@ class App:
                 self.pending_dest,
                 conflict_resolutions=selections,
                 reset_log=False,
+                archive_dir=self.pending_archive_dir,
             )
 
         for conflict in conflicts:

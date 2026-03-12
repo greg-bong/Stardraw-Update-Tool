@@ -149,7 +149,14 @@ class AttributeConflictError(Exception):
 # Main pipeline
 # ------------------------------------------------
 
-def run_pipeline(source_path, destination_path, log_callback, progress_callback=None, conflict_resolutions=None):
+def run_pipeline(
+    source_path,
+    destination_path,
+    log_callback,
+    progress_callback=None,
+    conflict_resolutions=None,
+    archive_dir=None,
+):
     """Read source attributes, detect conflicts, and write updates into the destination workbook."""
 
     def log(msg):
@@ -382,15 +389,19 @@ def run_pipeline(source_path, destination_path, log_callback, progress_callback=
 
             df.to_excel(writer, index=False, sheet_name=sh)
 
-    archive_dir = os.path.join(os.path.dirname(destination_path), "Archives")
+    if not archive_dir:
+        archive_dir = os.path.join(os.path.dirname(destination_path), "Archives")
+
     os.makedirs(archive_dir, exist_ok=True)
 
     archive_name = f"ARCHIVE_{timestamp()}_{os.path.basename(destination_path)}"
     archive_path = os.path.join(archive_dir, archive_name)
 
     update_progress(92, "Archiving and replacing destination file")
+    log(f"Creating backup archive at {archive_path}")
     shutil.copy2(destination_path, archive_path)
 
+    log("Replacing live destination workbook...")
     os.replace(temp_output_path, destination_path)
 
     time.sleep(2)

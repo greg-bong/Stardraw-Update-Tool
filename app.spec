@@ -5,7 +5,10 @@ a = Analysis(
     ['app.py'],
     pathex=[],
     binaries=[],
-    datas=[('device_id_exclusions.txt', '.')],
+    datas=[
+        ('device_id_exclusions.txt', '.'),
+        ('Twisted_Large_Logo Positive.png', '.'),
+    ],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
