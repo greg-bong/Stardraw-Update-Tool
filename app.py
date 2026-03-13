@@ -13,6 +13,7 @@ from version import APP_NAME, BUILD, VERSION
 CONFIG_FILE = os.path.expanduser("~/.stardraw_tool_config.json")
 APPROVED_ROOT = "TechTeam Resources"
 LOGO_FILE = "Twisted_Large_Logo Positive.png"
+WINDOWS_ICON_FILE = "Twisted_Icon.ico"
 
 BG = "#0c1117"
 FG = "#8e979e"
@@ -64,6 +65,7 @@ class App:
         self.root.geometry("980x700")
         self.root.minsize(900, 640)
         self.root.configure(bg=BG)
+        self.apply_window_icon()
 
         self.config_data = load_config()
         self.log_queue = queue.Queue()
@@ -86,6 +88,17 @@ class App:
         self.build_ui()
         self.refresh_exclusion_status()
         self.root.after(100, self.process_log_queue)
+
+    def apply_window_icon(self):
+        """Apply the Windows ICO file to the app window when available."""
+        icon_path = get_resource_path(WINDOWS_ICON_FILE)
+        if os.name != "nt" or not os.path.exists(icon_path):
+            return
+
+        try:
+            self.root.iconbitmap(icon_path)
+        except tk.TclError:
+            pass
 
     def build_ui(self):
         """Create the main GUI layout, controls, status banner, and scrolling log area."""

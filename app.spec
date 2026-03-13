@@ -8,6 +8,7 @@ a = Analysis(
     datas=[
         ('device_id_exclusions.txt', '.'),
         ('Twisted_Large_Logo Positive.png', '.'),
+        ('Twisted_Icon.ico', '.'),
     ],
     hiddenimports=[],
     hookspath=[],
@@ -34,6 +35,7 @@ exe = EXE(
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
+    icon='Twisted_Icon.ico',
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
