@@ -1,0 +1,76 @@
+name: Build Packages
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-macos:
+    name: Build macOS App
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pandas openpyxl pyinstaller pillow
+
+      - name: Build macOS app bundle
+        run: |
+          export PYINSTALLER_CONFIG_DIR="$PWD/.pyinstaller"
+          pyinstaller --noconfirm --distpath "$PWD/dist" --workpath "$PWD/build" app.spec
+
+      - name: Zip macOS app bundle
+        run: |
+          ditto -c -k --keepParent "dist/StardrawUpdateTool.app" "dist/StardrawUpdateTool-macOS.zip"
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: StardrawUpdateTool-macOS
+          path: dist/StardrawUpdateTool-macOS.zip
+
+  build-windows:
+    name: Build Windows App
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pandas openpyxl pyinstaller pillow
+
+      - name: Build Windows app
+        shell: pwsh
+        run: |
+          pyinstaller --noconfirm --distpath .\dist --workpath .\build app.spec
+
+      - name: Zip Windows app folder
+        shell: pwsh
+        run: |
+          Compress-Archive -Path .\dist\StardrawUpdateTool\* -DestinationPath .\dist\StardrawUpdateTool-windows.zip -Force
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: StardrawUpdateTool-windows
+          path: dist/StardrawUpdateTool-windows.zip

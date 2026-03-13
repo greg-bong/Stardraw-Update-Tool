@@ -24,10 +24,16 @@ Desktop tool for updating Stardraw model attributes from a source product export
 
 ### macOS
 
+Fastest day-to-day option:
+
+- open `dist/StardrawUpdateTool.app` directly
+- or move `StardrawUpdateTool.app` into `Applications`
+- optionally add it to the Dock for one-click launching
+
 From Terminal:
 
 ```bash
-cd /Users/gregoryknight/Desktop/StardrawUpdateTool_v1_4_1
+cd /path/to/StardrawUpdateTool
 ./run.command
 ```
 
@@ -119,12 +125,30 @@ cd "C:\Users\<your-user>\Desktop\Stardraw-Update-Tool\Stardraw-Update-Tool"
 
 ## Packaging
 
+### Automated Builds (GitHub Actions)
+
+The repository includes a GitHub Actions workflow that builds:
+
+- a macOS app bundle zip
+- a Windows app zip
+
+Workflow file:
+
+- `.github/workflows/build-packages.yml`
+
+How to use it:
+
+- open the repository in GitHub
+- go to `Actions`
+- run `Build Packages`
+- download the uploaded artifacts from the workflow run
+
 ### Build macOS `.app`
 
 From the project folder:
 
 ```bash
-cd /Users/gregoryknight/Desktop/StardrawUpdateTool_v1_4_1
+cd /path/to/StardrawUpdateTool
 env PYINSTALLER_CONFIG_DIR="$PWD/.pyinstaller" ./venv/bin/pyinstaller --noconfirm --distpath "$PWD/dist" --workpath "$PWD/build" app.spec
 ```
 
