@@ -386,8 +386,11 @@ class App:
         log_frame = tk.Frame(log_panel, bg=PANEL)
         log_frame.pack(fill="both", expand=True, padx=14, pady=(0, 14))
 
-        scrollbar = tk.Scrollbar(log_frame)
-        scrollbar.pack(side="right", fill="y")
+        y_scrollbar = tk.Scrollbar(log_frame)
+        y_scrollbar.pack(side="right", fill="y")
+
+        x_scrollbar = tk.Scrollbar(log_frame, orient="horizontal")
+        x_scrollbar.pack(side="bottom", fill="x")
 
         self.log = tk.Text(
             log_frame,
@@ -398,13 +401,15 @@ class App:
             relief="flat",
             padx=10,
             pady=10,
-            yscrollcommand=scrollbar.set,
+            yscrollcommand=y_scrollbar.set,
+            xscrollcommand=x_scrollbar.set,
             font=("Menlo", 9),
-            wrap="word",
+            wrap="none",
             height=16,
         )
         self.log.pack(fill="both", expand=True)
-        scrollbar.config(command=self.log.yview)
+        y_scrollbar.config(command=self.log.yview)
+        x_scrollbar.config(command=self.log.xview)
 
         self.log.tag_configure("error", foreground=ERROR)
         self.log.tag_configure("success", foreground=SUCCESS)
@@ -944,6 +949,9 @@ class App:
         list_scroll = tk.Scrollbar(list_frame)
         list_scroll.pack(side="right", fill="y")
 
+        list_x_scroll = tk.Scrollbar(list_frame, orient="horizontal")
+        list_x_scroll.pack(side="bottom", fill="x")
+
         conflict_list = tk.Listbox(
             list_frame,
             bg="#11161c",
@@ -955,9 +963,11 @@ class App:
             width=34,
             exportselection=False,
             yscrollcommand=list_scroll.set,
+            xscrollcommand=list_x_scroll.set,
         )
         conflict_list.pack(side="left", fill="both", expand=True)
         list_scroll.config(command=conflict_list.yview)
+        list_x_scroll.config(command=conflict_list.xview)
 
         detail_header = tk.Label(
             right,
@@ -990,6 +1000,9 @@ class App:
         option_scroll = tk.Scrollbar(option_frame)
         option_scroll.pack(side="right", fill="y")
 
+        option_x_scroll = tk.Scrollbar(option_frame, orient="horizontal")
+        option_x_scroll.pack(side="bottom", fill="x")
+
         option_list = tk.Listbox(
             option_frame,
             bg="#12151a",
@@ -1000,9 +1013,11 @@ class App:
             font=("Menlo", 10),
             exportselection=False,
             yscrollcommand=option_scroll.set,
+            xscrollcommand=option_x_scroll.set,
         )
         option_list.pack(fill="both", expand=True)
         option_scroll.config(command=option_list.yview)
+        option_x_scroll.config(command=option_list.xview)
 
         selection_bar = tk.Frame(right, bg=PANEL_ALT, highlightbackground=BORDER, highlightthickness=1)
         selection_bar.pack(fill="x", padx=12, pady=(0, 12))
