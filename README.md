@@ -151,6 +151,23 @@ How to use it:
 - run `Build Packages`
 - download the uploaded artifacts from the workflow run
 
+### GitHub Releases
+
+The repository also includes a release workflow that creates downloadable GitHub Release assets when a version tag is pushed.
+
+Workflow file:
+
+- `.github/workflows/release-packages.yml`
+
+Release flow:
+
+1. push a tag like `v1.6.0`
+2. GitHub Actions builds both packages
+3. GitHub creates a Release for that tag
+4. the Mac and Windows zip files are attached to the Release
+
+This is the easiest download path for non-technical users because they can use the `Releases` page instead of opening workflow artifacts.
+
 ### Build macOS `.app`
 
 From the project folder:
