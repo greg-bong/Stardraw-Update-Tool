@@ -1,6 +1,6 @@
 # ==========================================
 # Stardraw Update Tool Engine
-# Version: v1.6.0
+# Version: v1.7.0
 # Date: 2026-03-10
 # Patch: Numeric formatting + exclusion handling
 # ==========================================
@@ -15,7 +15,7 @@ from datetime import datetime
 
 import pandas as pd
 
-VERSION = "1.6.0"
+VERSION = "1.7.0"
 
 
 def get_resource_path(filename):

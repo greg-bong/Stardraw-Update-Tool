@@ -161,7 +161,7 @@ Workflow file:
 
 Release flow:
 
-1. push a tag like `v1.6.0`
+1. push a tag like `v1.7.0`
 2. GitHub Actions builds both packages
 3. GitHub creates a Release for that tag
 4. the Mac and Windows zip files are attached to the Release
