@@ -11,6 +11,28 @@ Desktop tool for updating Stardraw model attributes from a source product export
 - lets the user choose conflict resolutions in the GUI
 - creates a backup copy of the live destination workbook before replacement
 
+## Prerequisites For Operation
+
+Before running the tool, make sure all of the following are true:
+
+- Google Drive is running if the destination workbook or exclusion list file is stored in Google Drive
+- the destination workbook is fully synced locally and opens normally in Excel
+- the exclusion list file is fully synced locally if it is stored in Google Drive
+- the destination workbook is not open in Excel by another user when the write step begins
+- the source file is a valid `.xlsx` workbook
+- the destination file is a valid `.xlsx` workbook
+- the archive backup folder exists or can be created
+- the user has write access to the destination workbook and the selected archive folder
+- the user has read access to the exclusion list file
+- the required fields in the app are selected:
+  `Source Products Export`, `Destination Attributes File`, `Archive Backup Folder`, and `Exclusion List File`
+
+Recommended operational setup:
+
+- keep the exclusion list in a shared Google Drive folder
+- keep the destination workbook in a shared Google Drive location that is available offline
+- use an archive backup folder that all intended operators can access
+
 ## Main Files
 
 - `app.py`: Tkinter GUI
