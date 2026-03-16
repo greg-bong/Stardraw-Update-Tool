@@ -2,6 +2,10 @@
 
 Desktop tool for updating Stardraw model attributes from a source product export workbook.
 
+Purpose:
+
+- enable users to modify the attributes in a live project within Stardraw so this information is available automatically after the sync has been performed
+
 ## What It Does
 
 - reads a source `.xlsx` product export
