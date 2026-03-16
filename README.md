@@ -33,6 +33,23 @@ Recommended operational setup:
 - keep the destination workbook in a shared Google Drive location that is available offline
 - use an archive backup folder that all intended operators can access
 
+## Required Stardraw Fields
+
+Before the updater can write to the destination workbook, Stardraw must already have these fields set up on the destination sheet:
+
+- `Location`
+- `0. Device ID`
+- `Room`
+- `Power (w)`
+- `BTU/hr`
+- `Weight Kg`
+- `Notes`
+- `PoE`
+
+The destination sheet must also contain:
+
+- `Model Number`
+
 ## Main Files
 
 - `app.py`: Tkinter GUI
@@ -80,6 +97,10 @@ The GUI requires:
 - `Exclusion List File`
 
 The tool will not run unless all three are selected.
+
+Source file note:
+
+- the source file should be the downloaded `.xlsx` export from the project's `Products` tab
 
 ## Backup Behavior
 
