@@ -77,6 +77,7 @@ class App:
         self.pending_source = None
         self.pending_dest = None
         self.pending_archive_dir = None
+        self.pending_exclusion_file = None
         self.conflict_window = None
 
         self.lock_var = tk.BooleanVar(value=True)
@@ -86,7 +87,7 @@ class App:
         self.logo_image = None
 
         self.build_ui()
-        self.refresh_exclusion_status()
+        self.refresh_exclusion_status(self.config_data.get("exclusion_file"))
         self.root.after(100, self.process_log_queue)
 
     def apply_window_icon(self):
@@ -207,11 +208,14 @@ class App:
         self.source_entry = self.create_file_field(form, "Source Products Export", "Choose the latest products export workbook.")
         self.dest_entry = self.create_file_field(form, "Destination Attributes File", "Choose the shared Stardraw attributes workbook.")
         self.archive_entry = self.create_folder_field(form, "Archive Backup Folder", "Choose where backup copies should be written before the live file is replaced.")
+        self.exclusion_entry = self.create_text_file_field(form, "Exclusion List File", "Choose the shared exclusion list file, ideally from the team Google Drive folder.")
 
         if "destination" in self.config_data:
             self.dest_entry.insert(0, self.config_data["destination"])
         if "archive_dir" in self.config_data:
             self.archive_entry.insert(0, self.config_data["archive_dir"])
+        if "exclusion_file" in self.config_data:
+            self.exclusion_entry.insert(0, self.config_data["exclusion_file"])
 
         options_panel = tk.Frame(outer, bg=PANEL_ALT, highlightbackground=BORDER, highlightthickness=1)
         options_panel.pack(fill="x", padx=18, pady=(12, 10))
@@ -562,6 +566,72 @@ class App:
         self.browse_buttons.append(btn)
         return entry
 
+    def create_text_file_field(self, parent, label_text, helper_text):
+        """Render a labeled text-file picker row and return its entry widget."""
+        frame = tk.Frame(parent, bg=PANEL_ALT, highlightbackground=BORDER, highlightthickness=1)
+        frame.pack(fill="x", pady=8)
+
+        accent_bar = tk.Frame(frame, bg=ACCENT, width=6)
+        accent_bar.pack(side="left", fill="y")
+
+        content = tk.Frame(frame, bg=PANEL_ALT)
+        content.pack(side="left", fill="both", expand=True)
+
+        label = tk.Label(
+            content,
+            text=label_text,
+            bg=PANEL_ALT,
+            fg=FG,
+            font=("Avenir Next", 12, "bold"),
+            anchor="w",
+        )
+        label.pack(fill="x", padx=18, pady=(14, 2))
+
+        helper = tk.Label(
+            content,
+            text=helper_text,
+            bg=PANEL_ALT,
+            fg=MUTED,
+            font=("Avenir Next", 10),
+            anchor="w",
+        )
+        helper.pack(fill="x", padx=18, pady=(0, 10))
+
+        row = tk.Frame(content, bg=PANEL_ALT)
+        row.pack(fill="x", padx=18, pady=(0, 16))
+
+        entry = tk.Entry(
+            row,
+            bg=FIELD_BG,
+            fg="#d9e1e8",
+            insertbackground="#d9e1e8",
+            relief="flat",
+            font=("Menlo", 11),
+            disabledbackground=FIELD_BG,
+            disabledforeground=MUTED,
+        )
+        entry.pack(side="left", fill="x", expand=True, ipady=8)
+
+        btn = tk.Button(
+            row,
+            text="Browse",
+            bg=ACCENT,
+            fg="black",
+            activebackground=ACCENT_DARK,
+            activeforeground="black",
+            relief="flat",
+            font=("Avenir Next", 11, "bold"),
+            padx=16,
+            pady=8,
+            command=lambda: self.browse_text_file(entry),
+            cursor="hand2",
+        )
+        btn.pack(side="left", padx=(12, 0))
+
+        self.file_entries.append(entry)
+        self.browse_buttons.append(btn)
+        return entry
+
     def browse(self, entry):
         """Open a file picker and write the selected workbook path into the target entry."""
         path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
@@ -572,6 +642,13 @@ class App:
     def browse_folder(self, entry):
         """Open a folder picker and write the selected directory path into the target entry."""
         path = filedialog.askdirectory()
+        if path:
+            entry.delete(0, tk.END)
+            entry.insert(0, path)
+
+    def browse_text_file(self, entry):
+        """Open a text-file picker and write the selected path into the target entry."""
+        path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt"), ("All files", "*.*")])
         if path:
             entry.delete(0, tk.END)
             entry.insert(0, path)
@@ -645,9 +722,9 @@ class App:
         """Apply a progress event emitted by the background worker."""
         self.set_progress(percent, stage)
 
-    def refresh_exclusion_status(self):
+    def refresh_exclusion_status(self, exclusion_file_path=None):
         """Show whether the Device ID exclusion file was found and how many entries were loaded."""
-        status = get_device_id_exclusion_status()
+        status = get_device_id_exclusion_status(exclusion_file_path)
         if status["found"]:
             count = status["count"]
             noun = "entry" if count == 1 else "entries"
@@ -683,10 +760,14 @@ class App:
         source = self.source_entry.get().strip()
         dest = self.dest_entry.get().strip()
         archive_dir = self.archive_entry.get().strip()
+        exclusion_file = self.exclusion_entry.get().strip()
 
-        if not source or not dest or not archive_dir:
-            self.set_status("Source, destination, and archive folder are all required.", ERROR)
-            messagebox.showerror("Error", "Please select the source file, destination file, and archive folder.")
+        if not source or not dest or not archive_dir or not exclusion_file:
+            self.set_status("Source, destination, archive folder, and exclusion file are all required.", ERROR)
+            messagebox.showerror(
+                "Error",
+                "Please select the source file, destination file, archive folder, and exclusion list file.",
+            )
             return
 
         if self.lock_var.get() and APPROVED_ROOT not in dest:
@@ -697,13 +778,22 @@ class App:
             )
             return
 
-        self.launch_pipeline(source, dest, archive_dir=archive_dir)
+        self.launch_pipeline(source, dest, archive_dir=archive_dir, exclusion_file=exclusion_file)
 
-    def launch_pipeline(self, source, dest, conflict_resolutions=None, reset_log=True, archive_dir=None):
+    def launch_pipeline(
+        self,
+        source,
+        dest,
+        conflict_resolutions=None,
+        reset_log=True,
+        archive_dir=None,
+        exclusion_file=None,
+    ):
         """Start a background pipeline run, optionally applying chosen conflict resolutions."""
         self.pending_source = source
         self.pending_dest = dest
         self.pending_archive_dir = archive_dir
+        self.pending_exclusion_file = exclusion_file
 
         if self.conflict_window and self.conflict_window.winfo_exists():
             self.conflict_window.destroy()
@@ -716,7 +806,7 @@ class App:
         else:
             self.append_log("Retrying update with selected conflict values.")
 
-        self.refresh_exclusion_status()
+        self.refresh_exclusion_status(exclusion_file)
         self.set_progress(0, "Preparing to run")
         self.set_status("Running update. The window will stay responsive while processing.", WARNING)
         self.set_running_state(True)
@@ -724,12 +814,12 @@ class App:
 
         self.worker_thread = threading.Thread(
             target=self.run_pipeline_worker,
-            args=(source, dest, conflict_resolutions or {}, archive_dir),
+            args=(source, dest, conflict_resolutions or {}, archive_dir, exclusion_file),
             daemon=True,
         )
         self.worker_thread.start()
 
-    def run_pipeline_worker(self, source, dest, conflict_resolutions, archive_dir):
+    def run_pipeline_worker(self, source, dest, conflict_resolutions, archive_dir, exclusion_file):
         """Execute preflight checks and the update engine on a background thread."""
         try:
             self.log_queue.put(("progress", (8, "Checking Google Drive availability")))
@@ -743,8 +833,15 @@ class App:
                 self.queue_progress_update,
                 conflict_resolutions,
                 archive_dir,
+                exclusion_file,
             )
-            save_config({"destination": dest, "archive_dir": archive_dir})
+            save_config(
+                {
+                    "destination": dest,
+                    "archive_dir": archive_dir,
+                    "exclusion_file": exclusion_file,
+                }
+            )
 
             self.log_queue.put(("success", "Update completed successfully."))
         except AttributeConflictError as exc:
@@ -1048,6 +1145,7 @@ class App:
                 conflict_resolutions=selections,
                 reset_log=False,
                 archive_dir=self.pending_archive_dir,
+                exclusion_file=self.pending_exclusion_file,
             )
 
         for conflict in conflicts:

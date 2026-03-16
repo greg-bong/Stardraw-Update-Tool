@@ -25,23 +25,24 @@ def get_resource_path(filename):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
 
 
-EXCLUSION_FILE_PATH = get_resource_path("device_id_exclusions.txt")
+DEFAULT_EXCLUSION_FILE_PATH = get_resource_path("device_id_exclusions.txt")
 
 
 # ------------------------------------------------
 # Load Device ID exclusion list
 # ------------------------------------------------
 
-def load_device_id_exclusions():
+def load_device_id_exclusions(exclusion_file_path=None):
     """Load Device ID prefixes that should be cleared instead of normalized."""
 
     exclusions = set()
+    resolved_path = exclusion_file_path or DEFAULT_EXCLUSION_FILE_PATH
 
-    if not os.path.exists(EXCLUSION_FILE_PATH):
-        print(f"WARNING: exclusion file not found at {EXCLUSION_FILE_PATH}")
-        return exclusions, False
+    if not os.path.exists(resolved_path):
+        print(f"WARNING: exclusion file not found at {resolved_path}")
+        return exclusions, False, resolved_path
 
-    with open(EXCLUSION_FILE_PATH, "r", encoding="utf-8") as f:
+    with open(resolved_path, "r", encoding="utf-8") as f:
         for line in f:
 
             val = line.strip().upper()
@@ -54,18 +55,16 @@ def load_device_id_exclusions():
 
             exclusions.add(val)
 
-    return exclusions, True
+    return exclusions, True, resolved_path
 
 
-DEVICE_ID_EXCLUSIONS, DEVICE_ID_EXCLUSION_FILE_FOUND = load_device_id_exclusions()
-
-
-def get_device_id_exclusion_status():
+def get_device_id_exclusion_status(exclusion_file_path=None):
     """Return a short status summary for the Device ID exclusion file."""
+    exclusions, found, resolved_path = load_device_id_exclusions(exclusion_file_path)
     return {
-        "found": DEVICE_ID_EXCLUSION_FILE_FOUND,
-        "path": EXCLUSION_FILE_PATH,
-        "count": len(DEVICE_ID_EXCLUSIONS),
+        "found": found,
+        "path": resolved_path,
+        "count": len(exclusions),
     }
 
 
@@ -73,7 +72,7 @@ def get_device_id_exclusion_status():
 # Device ID exclusion check
 # ------------------------------------------------
 
-def device_id_should_clear(value):
+def device_id_should_clear(value, exclusions):
     """Return True when the Device ID prefix is present in the exclusion list."""
 
     if not value:
@@ -82,7 +81,7 @@ def device_id_should_clear(value):
     value = str(value).upper()
     prefix = value.split("-")[0]
 
-    return prefix in DEVICE_ID_EXCLUSIONS
+    return prefix in exclusions
 
 
 def timestamp():
@@ -98,7 +97,7 @@ def find_col(df, name):
     return None
 
 
-def normalize_device_id(val):
+def normalize_device_id(val, exclusions):
     """Normalize raw Device IDs to PREFIX-00 unless the prefix is excluded."""
 
     if pd.isna(val):
@@ -106,7 +105,7 @@ def normalize_device_id(val):
 
     val = str(val).strip().upper()
 
-    if device_id_should_clear(val):
+    if device_id_should_clear(val, exclusions):
         return None
 
     m = re.match(r"([A-Z]{2,3})-", val)
@@ -156,6 +155,7 @@ def run_pipeline(
     progress_callback=None,
     conflict_resolutions=None,
     archive_dir=None,
+    exclusion_file_path=None,
 ):
     """Read source attributes, detect conflicts, and write updates into the destination workbook."""
 
@@ -170,7 +170,8 @@ def run_pipeline(
 
     update_progress(5, "Starting update")
     log(f"Starting Stardraw Attribute Updater v{VERSION}")
-    exclusion_status = get_device_id_exclusion_status()
+    exclusion_status = get_device_id_exclusion_status(exclusion_file_path)
+    device_id_exclusions, _, _ = load_device_id_exclusions(exclusion_file_path)
     if exclusion_status["found"]:
         log(
             "Device ID exclusions loaded: "
@@ -237,7 +238,7 @@ def run_pipeline(
             )
 
     if device:
-        src[device] = src[device].apply(normalize_device_id)
+        src[device] = src[device].apply(lambda val: normalize_device_id(val, device_id_exclusions))
 
     src["_MODEL_DISPLAY"] = src[model].astype(str).str.strip()
     src["_MODEL_NORM"] = src[model].astype(str).str.lower().str.strip()

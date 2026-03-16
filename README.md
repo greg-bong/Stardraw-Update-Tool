@@ -55,6 +55,7 @@ The GUI requires:
 - `Source Products Export`
 - `Destination Attributes File`
 - `Archive Backup Folder`
+- `Exclusion List File`
 
 The tool will not run unless all three are selected.
 
@@ -81,9 +82,15 @@ If multiple values are found for the same model/field combination:
 
 ## Device ID Exclusions
 
-The file `device_id_exclusions.txt` contains Device ID prefixes that should be cleared instead of normalized.
+The exclusion list contains Device ID prefixes that should be cleared instead of normalized.
 
-The app shows whether this file loaded successfully at startup.
+Recommended setup:
+
+- store the exclusion list as a shared `.txt` file in Google Drive
+- point the app's `Exclusion List File` field at that shared file
+- let each user read the same central exclusions list
+
+The app shows whether the selected exclusion file loaded successfully at startup and during runs.
 
 ## Google Drive Behavior
 
@@ -93,6 +100,7 @@ This means:
 
 - real Google Drive destinations still get a Drive running check
 - local test files on a Mac or Windows VM do not require Google Drive to be installed
+- the exclusion list can also be loaded from a shared Google Drive text file
 
 ## Local Development Setup
 
